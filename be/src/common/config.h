@@ -960,6 +960,8 @@ CONF_mInt32(starlet_delete_files_max_key_in_batch, "1000");
 CONF_mInt64(lake_metadata_cache_limit, /*2GB=*/"2147483648");
 CONF_mBool(lake_print_delete_log, "false");
 CONF_mInt64(lake_compaction_stream_buffer_size_bytes, "1048576"); // 1MB
+// The interval to check whether lake compaction is valid. Set to <= 0 to disable the check.
+CONF_mInt32(lake_compaction_check_valid_interval_minutes, "30"); // 30 minutes
 // Used to ensure service availability in extreme situations by sacrificing a certain degree of correctness
 CONF_mBool(experimental_lake_ignore_lost_segment, "false");
 CONF_mInt64(experimental_lake_wait_per_put_ms, "0");
@@ -978,6 +980,8 @@ CONF_mInt64(lake_pk_compaction_max_input_rowsets, "1000");
 CONF_mInt64(lake_pk_compaction_min_input_segments, "5");
 // Used for control memory usage of update state cache and compaction state cache
 CONF_mInt32(lake_pk_preload_memory_limit_percent, "30");
+CONF_mInt32(lake_pk_index_sst_min_compaction_versions, "2");
+CONF_mInt32(lake_pk_index_sst_max_compaction_versions, "5");
 
 CONF_mBool(dependency_librdkafka_debug_enable, "false");
 
@@ -1256,4 +1260,8 @@ CONF_mInt32(olap_string_max_length, "1048576");
 // if mem_limit < 16 GB, disable JIT.
 // else it = min(mem_limit*0.01, 1GB)
 CONF_mInt64(jit_lru_cache_size, "0");
+
+CONF_mInt64(arrow_io_coalesce_read_max_buffer_size, "8388608");
+CONF_mInt64(arrow_io_coalesce_read_max_distance_size, "1048576");
+CONF_mInt64(arrow_read_batch_size, "4096");
 } // namespace starrocks::config

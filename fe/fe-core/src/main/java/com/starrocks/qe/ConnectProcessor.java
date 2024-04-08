@@ -35,6 +35,7 @@
 package com.starrocks.qe;
 
 import com.google.common.base.Strings;
+import com.google.gson.Gson;
 import com.starrocks.analysis.Expr;
 import com.starrocks.analysis.LiteralExpr;
 import com.starrocks.analysis.NullLiteral;
@@ -96,7 +97,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.IntStream;
 
 /**
  * Process one mysql connection, receive one pakcet, process, send one packet.
@@ -108,6 +108,10 @@ public class ConnectProcessor {
     private ByteBuffer packetBuf;
 
     protected StmtExecutor executor = null;
+
+    private static final Logger PROFILE_LOG = LogManager.getLogger("profile");
+
+    private static final Gson GSON = new Gson();
 
     public ConnectProcessor(ConnectContext context) {
         this.ctx = context;
@@ -311,6 +315,11 @@ public class ConnectProcessor {
             queryDetail.setCpuCostNs(statistics.cpuCostNs == null ? -1 : statistics.cpuCostNs);
             queryDetail.setMemCostBytes(statistics.memCostBytes == null ? -1 : statistics.memCostBytes);
             queryDetail.setSpillBytes(statistics.spillBytes == null ? -1 : statistics.spillBytes);
+        }
+
+        if (Config.enable_profile_log) {
+            String jsonString = GSON.toJson(queryDetail);
+            PROFILE_LOG.info(jsonString);
         }
 
         QueryDetailQueue.addQueryDetail(queryDetail);
@@ -528,12 +537,13 @@ public class ConnectProcessor {
         packetBuf.get(nullBitmap);
         try {
             ctx.setQueryId(UUIDUtil.genUUID());
-            Integer[] mysqlTypeCodes = new Integer[numParams];
-
+            
             // new_params_bind_flag
             if (packetBuf.hasRemaining() && (int) packetBuf.get() != 0) {
                 // parse params types
-                IntStream.range(0, numParams).forEach(i -> mysqlTypeCodes[i] = (int) packetBuf.getChar());
+                for (int i = 0; i < numParams; ++i) {
+                    prepareCtx.getStmt().getMysqlTypeCodes().set(i, (int) packetBuf.getChar());
+                }
             }
             // gene exprs
             List<Expr> exprs = new ArrayList<>();
@@ -542,7 +552,7 @@ public class ConnectProcessor {
                     exprs.add(new NullLiteral());
                     continue;
                 }
-                LiteralExpr l = LiteralExpr.parseLiteral(mysqlTypeCodes[i]);
+                LiteralExpr l = LiteralExpr.parseLiteral(prepareCtx.getStmt().getMysqlTypeCodes().get(i));
                 l.parseMysqlParam(packetBuf);
                 exprs.add(l);
             }
